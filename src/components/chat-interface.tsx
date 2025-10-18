@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -56,11 +57,11 @@ export function ChatInterface() {
     const saved = localStorage.getItem('savedChats')
     if (saved) {
       try {
-        const parsedChats = JSON.parse(saved).map((chat: any) => ({
+        const parsedChats = JSON.parse(saved).map((chat: SavedChat & { createdAt: string; updatedAt: string; messages: Array<Message & { timestamp: string }> }) => ({
           ...chat,
           createdAt: new Date(chat.createdAt),
           updatedAt: new Date(chat.updatedAt),
-          messages: chat.messages.map((msg: any) => ({
+          messages: chat.messages.map((msg: Message & { timestamp: string }) => ({
             ...msg,
             timestamp: new Date(msg.timestamp)
           }))
@@ -415,9 +416,11 @@ export function ChatInterface() {
                       {/* Generated image */}
                       {message.generatedImage && (
                         <div className="mb-3">
-                          <img 
+                          <Image 
                             src={message.generatedImage} 
                             alt={message.imagePrompt || "Generated image"} 
+                            width={400}
+                            height={400}
                             className="max-w-full h-auto rounded-lg border"
                             style={{ maxHeight: '400px' }}
                           />
@@ -432,9 +435,11 @@ export function ChatInterface() {
                       {/* Uploaded images preview for user messages */}
                       {message.imageUrl && !message.generatedImage && (
                         <div className="mb-3">
-                          <img 
+                          <Image 
                             src={message.imageUrl} 
                             alt="Uploaded image" 
+                            width={300}
+                            height={300}
                             className="max-w-full h-auto rounded-lg border"
                             style={{ maxHeight: '300px' }}
                           />
@@ -446,10 +451,12 @@ export function ChatInterface() {
                         <div className="mb-3">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {message.imageUrls.map((imageUrl, index) => (
-                              <img 
+                              <Image 
                                 key={index}
                                 src={imageUrl} 
                                 alt={`Uploaded image ${index + 1}`} 
+                                width={200}
+                                height={200}
                                 className="max-w-full h-auto rounded-lg border"
                                 style={{ maxHeight: '200px' }}
                               />
@@ -503,9 +510,11 @@ export function ChatInterface() {
               {selectedImages.map((image, index) => (
                 <div key={index} className="relative inline-block">
                   <div className="relative">
-                    <img 
+                    <Image 
                       src={image} 
                       alt={`Selected image ${index + 1}`} 
+                      width={128}
+                      height={100}
                       className="max-w-32 h-auto rounded-lg border"
                       style={{ maxHeight: '100px' }}
                     />

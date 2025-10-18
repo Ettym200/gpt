@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     // Process messages to handle images
     const processedMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = messages.map((msg: MessageWithImage) => {
       if (msg.role === 'user' && (msg.imageUrl || (msg.imageUrls && msg.imageUrls.length > 0))) {
-        const content: any[] = [
+        const content: (OpenAI.Chat.Completions.ChatCompletionContentPartText | OpenAI.Chat.Completions.ChatCompletionContentPartImage)[] = [
           {
             type: "text",
             text: msg.content || "What's in these images?"
