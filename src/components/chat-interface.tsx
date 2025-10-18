@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ModeToggle } from '@/components/ui/mode-toggle'
-import { SendIcon, BotIcon, UserIcon, LoaderIcon, ImageIcon, XIcon, SaveIcon, FolderIcon, TrashIcon } from 'lucide-react'
+import { SendIcon, BotIcon, UserIcon, LoaderIcon, ImageIcon, XIcon, SaveIcon, TrashIcon, MenuIcon, PlusIcon } from 'lucide-react'
 
 interface Message {
   id: string
@@ -37,9 +37,10 @@ export function ChatInterface() {
   const [isGeneratingImage, setIsGeneratingImage] = useState(false)
   const [selectedImages, setSelectedImages] = useState<string[]>([])
   const [savedChats, setSavedChats] = useState<SavedChat[]>([])
-  const [showSavedChats, setShowSavedChats] = useState(false)
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [chatTitle, setChatTitle] = useState('')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -71,6 +72,21 @@ export function ChatInterface() {
         console.error('Error loading saved chats:', error)
       }
     }
+  }, [])
+
+  // Handle sidebar visibility based on screen size
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setSidebarOpen(true)
+      } else {
+        setSidebarOpen(false)
+      }
+    }
+
+    handleResize() // Set initial state
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   const isImageGenerationRequest = (text: string): boolean => {
@@ -189,15 +205,29 @@ export function ChatInterface() {
     }
 
     const title = chatTitle.trim() || generateChatTitle(messages)
-    const newChat: SavedChat = {
-      id: Date.now().toString(),
-      title,
-      messages: [...messages],
-      createdAt: new Date(),
-      updatedAt: new Date()
+    
+    let updatedChats: SavedChat[]
+    
+    if (currentChatId) {
+      // Atualizar chat existente
+      updatedChats = savedChats.map(chat => 
+        chat.id === currentChatId 
+          ? { ...chat, title, messages: [...messages], updatedAt: new Date() }
+          : chat
+      )
+    } else {
+      // Criar novo chat
+      const newChat: SavedChat = {
+        id: Date.now().toString(),
+        title,
+        messages: [...messages],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+      updatedChats = [...savedChats, newChat]
+      setCurrentChatId(newChat.id)
     }
 
-    const updatedChats = [...savedChats, newChat]
     setSavedChats(updatedChats)
     localStorage.setItem('savedChats', JSON.stringify(updatedChats))
     
@@ -208,7 +238,7 @@ export function ChatInterface() {
 
   const loadChat = (chat: SavedChat) => {
     setMessages(chat.messages)
-    setShowSavedChats(false)
+    setCurrentChatId(chat.id)
     scrollToBottom()
   }
 
@@ -217,6 +247,14 @@ export function ChatInterface() {
       const updatedChats = savedChats.filter(chat => chat.id !== chatId)
       setSavedChats(updatedChats)
       localStorage.setItem('savedChats', JSON.stringify(updatedChats))
+      
+      // Se o chat deletado é o atual, limpar a conversa
+      if (currentChatId === chatId) {
+        setMessages([])
+        setSelectedImages([])
+        setInput('')
+        setCurrentChatId(null)
+      }
     }
   }
 
@@ -225,7 +263,15 @@ export function ChatInterface() {
       setMessages([])
       setSelectedImages([])
       setInput('')
+      setCurrentChatId(null)
     }
+  }
+
+  const startNewChat = () => {
+    setMessages([])
+    setSelectedImages([])
+    setInput('')
+    setCurrentChatId(null)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -329,51 +375,150 @@ export function ChatInterface() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-            <BotIcon className="w-5 h-5 text-white" />
+    <div className="flex h-screen bg-background">
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`${sidebarOpen ? 'w-80' : 'w-0'} transition-all duration-300 overflow-hidden border-r bg-background relative z-50`}>
+        <div className="h-full flex flex-col">
+          {/* Sidebar Header */}
+          <div className="p-4 border-b">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <BotIcon className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold">ChatGPT</h2>
+                  <p className="text-xs text-muted-foreground">AI Assistant</p>
+                </div>
+              </div>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-semibold">ChatGPT</h1>
-            <p className="text-sm text-muted-foreground">AI Assistant</p>
+
+          {/* New Chat Button */}
+          <div className="p-4">
+            <Button
+              onClick={startNewChat}
+              className="w-full flex items-center space-x-2"
+              variant="outline"
+            >
+              <PlusIcon className="w-4 h-4" />
+              <span>Nova Conversa</span>
+            </Button>
           </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowSavedChats(true)}
-            className="flex items-center space-x-1"
-          >
-            <FolderIcon className="w-4 h-4" />
-            <span>Conversas</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowSaveDialog(true)}
-            disabled={messages.length === 0}
-            className="flex items-center space-x-1"
-          >
-            <SaveIcon className="w-4 h-4" />
-            <span>Salvar</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={clearCurrentChat}
-            disabled={messages.length === 0}
-            className="flex items-center space-x-1"
-          >
-            <TrashIcon className="w-4 h-4" />
-            <span>Limpar</span>
-          </Button>
-          <ModeToggle />
+
+          {/* Saved Chats List */}
+          <div className="flex-1 overflow-y-auto p-4">
+            <h3 className="text-sm font-medium text-muted-foreground mb-3">Conversas Salvas</h3>
+            <div className="space-y-2">
+              {savedChats.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhuma conversa salva
+                </p>
+              ) : (
+                savedChats.map((chat) => (
+                  <div
+                    key={chat.id}
+                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                      currentChatId === chat.id
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'hover:bg-muted'
+                    }`}
+                    onClick={() => loadChat(chat)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm truncate">{chat.title}</h4>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {chat.messages.length} mensagens
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {chat.updatedAt.toLocaleDateString()}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          deleteChat(chat.id)
+                        }}
+                        className="ml-2 h-6 w-6 p-0"
+                      >
+                        <TrashIcon className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Sidebar Footer */}
+          <div className="p-4 border-t">
+            <div className="flex items-center justify-between">
+              <ModeToggle />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSaveDialog(true)}
+                disabled={messages.length === 0}
+                className="flex items-center space-x-1"
+              >
+                <SaveIcon className="w-4 h-4" />
+                <span>Salvar</span>
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b">
+          <div className="flex items-center space-x-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="lg:hidden"
+            >
+              <MenuIcon className="w-5 h-5" />
+            </Button>
+            <div>
+              <h1 className="text-xl font-semibold">
+                {currentChatId 
+                  ? savedChats.find(chat => chat.id === currentChatId)?.title || 'ChatGPT'
+                  : 'Nova Conversa'
+                }
+              </h1>
+              <p className="text-sm text-muted-foreground">AI Assistant</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearCurrentChat}
+              disabled={messages.length === 0}
+              className="flex items-center space-x-1"
+            >
+              <TrashIcon className="w-4 h-4" />
+              <span>Limpar</span>
+            </Button>
+            <div className="lg:hidden">
+              <ModeToggle />
+            </div>
+          </div>
+        </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -590,6 +735,7 @@ export function ChatInterface() {
           Press Enter to send • Click 📷 to upload multiple images • Ctrl+V to paste • Ask &quot;generate image&quot; for DALL-E 3
         </p>
       </div>
+      </div>
 
       {/* Save Chat Dialog */}
       {showSaveDialog && (
@@ -609,60 +755,12 @@ export function ChatInterface() {
                 </div>
                 <div className="flex space-x-2">
                   <Button onClick={saveChat} className="flex-1">
-                    Salvar
+                    {currentChatId ? 'Atualizar' : 'Salvar'}
                   </Button>
                   <Button variant="outline" onClick={() => setShowSaveDialog(false)} className="flex-1">
                     Cancelar
                   </Button>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Saved Chats Modal */}
-      {showSavedChats && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Card className="w-96 max-h-96">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Conversas Salvas</h3>
-                <Button variant="ghost" size="sm" onClick={() => setShowSavedChats(false)}>
-                  <XIcon className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {savedChats.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">Nenhuma conversa salva</p>
-                ) : (
-                  savedChats.map((chat) => (
-                    <div key={chat.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium truncate">{chat.title}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {chat.messages.length} mensagens • {chat.createdAt.toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex space-x-1 ml-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => loadChat(chat)}
-                        >
-                          Carregar
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => deleteChat(chat.id)}
-                        >
-                          <TrashIcon className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                )}
               </div>
             </CardContent>
           </Card>
