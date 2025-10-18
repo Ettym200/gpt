@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ModeToggle } from '@/components/ui/mode-toggle'
+import { TextAnimate } from '@/components/ui/text-animate'
 import { SendIcon, BotIcon, UserIcon, LoaderIcon, ImageIcon, XIcon, SaveIcon, TrashIcon, MenuIcon, PlusIcon } from 'lucide-react'
 
 interface Message {
@@ -610,7 +611,19 @@ export function ChatInterface() {
                         </div>
                       )}
                       
-                      <div className="whitespace-pre-wrap">{message.content}</div>
+                      {message.role === 'assistant' ? (
+                        <TextAnimate
+                          by="word"
+                          animation="blurInUp"
+                          duration={0.4}
+                          delay={0.1}
+                          className="whitespace-pre-wrap"
+                        >
+                          {message.content}
+                        </TextAnimate>
+                      ) : (
+                        <div className="whitespace-pre-wrap">{message.content}</div>
+                      )}
                     </div>
                   </div>
                 </CardContent>
