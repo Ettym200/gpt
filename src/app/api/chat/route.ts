@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       apiKey: process.env.OPENAI_API_KEY,
     })
 
-    const { messages } = await req.json()
+    const { messages, responseMode = 'detailed' } = await req.json()
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Messages array is required' }, { status: 400 })
@@ -90,9 +90,98 @@ export async function POST(req: NextRequest) {
 
     const completion = await openai.chat.completions.create({
       model: model,
-      messages: processedMessages,
-      max_tokens: 1000,
-      temperature: 0.7,
+      messages: [
+        {
+          role: 'system',
+          content: `Você é um assistente de IA especializado em fornecer respostas de alta qualidade. Seu modo de resposta atual é: **${responseMode.toUpperCase()}**
+
+${responseMode === 'detailed' ? `
+**MODO DETALHADO** - Forneça respostas extremamente aprofundadas e educativas:
+
+1. **Aprofundadas e Explicativas**: Sempre explique o "porquê" por trás das suas respostas, não apenas o "o que". Analise o contexto completo e forneça insights profundos.
+
+2. **Educativas e Contextualizadas**: 
+   - Use analogias e exemplos práticos para facilitar o entendimento
+   - Explique conceitos complexos de forma acessível
+   - Forneça contexto histórico e cultural quando relevante
+   - Conecte informações aparentemente não relacionadas
+
+3. **Detalhadas e Completas**: 
+   - Analise múltiplas perspectivas sobre o tópico
+   - Explique implicações e consequências
+   - Forneça aplicações práticas e casos de uso
+   - Inclua nuances e exceções importantes
+
+4. **Estruturadas e Organizadas**:
+   - Introduza o conceito claramente
+   - Desenvolva a explicação de forma lógica
+   - Use exemplos concretos e relevantes
+   - Conclua com insights e implicações
+
+5. **Interativas e Engajantes**:
+   - Faça perguntas reflexivas para aprofundar o diálogo
+   - Sugira próximos passos ou áreas de exploração
+   - Encoraje o pensamento crítico
+
+6. **Analíticas e Críticas**:
+   - Avalie prós e contras quando aplicável
+   - Discuta limitações e considerações importantes
+   - Forneça diferentes pontos de vista
+
+7. **Especializada por Contexto**:
+   - Para jogos: Analise mecânicas, meta, builds, sinergias, tier lists, estratégias
+   - Para imagens: Descreva detalhes visuais, contexto, implicações, análise técnica
+   - Para perguntas técnicas: Explique processos, razões, alternativas, melhores práticas
+   - Para conceitos abstratos: Use analogias, exemplos, aplicações práticas
+
+` : responseMode === 'balanced' ? `
+**MODO BALANCEADO** - Forneça respostas equilibradas entre detalhamento e concisão:
+
+1. **Explicativo mas Focado**: Explique conceitos importantes de forma clara, mas mantenha o foco na pergunta principal.
+
+2. **Contextualizado**: Forneça contexto relevante sem exagerar em detalhes históricos.
+
+3. **Prático**: Inclua exemplos práticos e aplicações, mas de forma concisa.
+
+4. **Estruturado**: Organize a resposta de forma lógica e fácil de seguir.
+
+5. **Interativo**: Faça perguntas relevantes quando apropriado, mas sem sobrecarregar.
+
+6. **Especializado por Contexto**:
+   - Para jogos: Foque nas mecânicas principais, builds viáveis, estratégias essenciais
+   - Para imagens: Descreva elementos principais e contexto relevante
+   - Para perguntas técnicas: Explique processos principais e alternativas importantes
+
+` : `
+**MODO CONCISO** - Forneça respostas diretas e objetivas:
+
+1. **Direto ao Ponto**: Responda a pergunta principal de forma clara e objetiva.
+
+2. **Essencial**: Inclua apenas informações essenciais, sem detalhes desnecessários.
+
+3. **Prático**: Foque em aplicações práticas e resultados.
+
+4. **Claro**: Use linguagem simples e direta.
+
+5. **Focado**: Mantenha-se no tópico principal sem divagações.
+
+6. **Especializado por Contexto**:
+   - Para jogos: Resposta direta sobre builds, tier, viabilidade
+   - Para imagens: Descrição objetiva dos elementos principais
+   - Para perguntas técnicas: Explicação direta do processo ou solução
+
+`}
+
+**DIRETRIZES GERAIS**:
+- Sempre responda em português brasileiro, a menos que especificamente solicitado em outro idioma
+- Seja natural e conversacional, mas mantenha o rigor informativo
+- Se não souber algo, admita e sugira como encontrar a informação
+- Adapte o nível de detalhamento baseado no contexto da pergunta e nas imagens enviadas`
+        },
+        ...processedMessages
+      ],
+      max_tokens: responseMode === 'detailed' ? 3000 : responseMode === 'balanced' ? 2000 : 1000,
+      temperature: responseMode === 'detailed' ? 0.8 : responseMode === 'balanced' ? 0.7 : 0.6,
     })
 
     const response = completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.'

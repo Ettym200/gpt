@@ -9,7 +9,6 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ModeToggle } from '@/components/ui/mode-toggle'
-import { TextAnimate } from '@/components/ui/text-animate'
 import { SendIcon, BotIcon, UserIcon, LoaderIcon, ImageIcon, XIcon, SaveIcon, TrashIcon, MenuIcon, PlusIcon } from 'lucide-react'
 
 interface Message {
@@ -42,6 +41,7 @@ export function ChatInterface() {
   const [chatTitle, setChatTitle] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
+  const [responseMode, setResponseMode] = useState<'detailed' | 'balanced' | 'concise'>('detailed')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -338,6 +338,7 @@ export function ChatInterface() {
             imageUrl: msg.imageUrl,
             imageUrls: msg.imageUrls,
           })),
+          responseMode: responseMode,
         }),
       })
 
@@ -504,21 +505,30 @@ export function ChatInterface() {
               <p className="text-sm text-muted-foreground">AI Assistant</p>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearCurrentChat}
-              disabled={messages.length === 0}
-              className="flex items-center space-x-1"
-            >
-              <TrashIcon className="w-4 h-4" />
-              <span>Limpar</span>
-            </Button>
-            <div className="lg:hidden">
-              <ModeToggle />
-            </div>
-          </div>
+           <div className="flex items-center space-x-2">
+             <select
+               value={responseMode}
+               onChange={(e) => setResponseMode(e.target.value as 'detailed' | 'balanced' | 'concise')}
+               className="px-3 py-1 text-sm border rounded-md bg-background"
+             >
+               <option value="detailed">📚 Detalhado</option>
+               <option value="balanced">⚖️ Balanceado</option>
+               <option value="concise">⚡ Conciso</option>
+             </select>
+             <Button
+               variant="outline"
+               size="sm"
+               onClick={clearCurrentChat}
+               disabled={messages.length === 0}
+               className="flex items-center space-x-1"
+             >
+               <TrashIcon className="w-4 h-4" />
+               <span>Limpar</span>
+             </Button>
+             <div className="lg:hidden">
+               <ModeToggle />
+             </div>
+           </div>
         </div>
 
       {/* Messages */}
@@ -611,19 +621,7 @@ export function ChatInterface() {
                         </div>
                       )}
                       
-                      {message.role === 'assistant' ? (
-                        <TextAnimate
-                          by="word"
-                          animation="blurInUp"
-                          duration={0.4}
-                          delay={0.1}
-                          className="whitespace-pre-wrap"
-                        >
-                          {message.content}
-                        </TextAnimate>
-                      ) : (
-                        <div className="whitespace-pre-wrap">{message.content}</div>
-                      )}
+                      <div className="whitespace-pre-wrap">{message.content}</div>
                     </div>
                   </div>
                 </CardContent>
